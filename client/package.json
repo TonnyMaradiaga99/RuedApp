@@ -18,8 +18,9 @@
     "core-js": "^3.8.3",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-    "react-router-dom": "^6.0.0",
-    "vue": "^3.2.13"
+    "react-router-dom": "^6.30.0",
+    "vue": "^3.2.13",
+    "vue-router": "^4.5.1"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",
