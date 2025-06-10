@@ -38,7 +38,17 @@
         <input id="fechaEstimadaEntrega" v-model="nuevaOrden.fechaEstimadaEntrega" type="date" />
 
         <label for="estado">Estado</label>
-        <input id="estado" v-model="nuevaOrden.estado" type="text" placeholder="Estado" />
+        <select id="estado" v-model="nuevaOrden.estado" required>
+          <option disabled value="">Seleccione un Estado</option>
+          <option value="Recepción">Recepción</option>
+          <option value="Diagnóstico">Diagnóstico</option>
+          <option value="Aprobación de presupuesto">Aprobación de presupuesto</option>
+          <option value="En reparación">En reparación</option>
+          <option value="Listo para entrega">Listo para entrega</option>
+          <option value="Entregado">Entregado</option>
+          <option value="Finalizado">Finalizado</option>
+          <option value="Cancelado">Cancelado</option>
+        </select>
 
         <label for="diagnostico">Diagnóstico</label>
         <textarea id="diagnostico" v-model="nuevaOrden.diagnostico" placeholder="Diagnóstico"></textarea>
@@ -56,9 +66,31 @@
           <img v-for="foto in nuevaOrden.fotos" :src="foto" :key="foto" style="max-width: 80px; margin: 5px;" />
         </div>
 
+        <div v-if="nuevaOrden.historialEstados && nuevaOrden.historialEstados.length">
+          <h3>Historial de Estados</h3>
+          <ul>
+            <li v-for="(h, i) in nuevaOrden.historialEstados" :key="i">
+              <strong>{{ h.estado }}</strong> - {{ new Date(h.fecha).toLocaleString() }}
+              <span v-if="h.comentario">({{ h.comentario }})</span>
+            </li>
+          </ul>
+        </div>
+
         <button type="submit">{{ editando ? 'Actualizar' : 'Guardar' }}</button>
         <button v-if="editando" type="button" @click="cancelarEdicion">Cancelar</button>
       </form>
+    </BaseModal>
+
+    <BaseModal v-if="mostrarHistorial" @close="cerrarHistorial">
+      <h2>Historial de Estados</h2>
+      <ul v-if="ordenHistorialSeleccionada && ordenHistorialSeleccionada.historialEstados">
+        <li v-for="(h, i) in ordenHistorialSeleccionada.historialEstados" :key="i">
+          <strong>{{ h.estado }}</strong>
+          <span> - {{ new Date(h.fecha).toLocaleString() }}</span>
+          <span v-if="h.comentario"> ({{ h.comentario }})</span>
+        </li>
+      </ul>
+      <div v-else>No hay historial disponible.</div>
     </BaseModal>
 
     <table class="ordenes-servicio-table">
@@ -99,8 +131,13 @@
             </div>
           </td>
           <td>
+            <button @click="verHistorial(orden)">Ver historial</button>
             <button @click="editarOrden(orden)">Editar</button>
             <button @click="confirmarEliminarOrden(orden._id)">Eliminar</button>
+            <button @click="$router.push({ 
+  path: `/dashboard/ordenes-servicio/${orden._id}`, 
+  query: { } // puedes dejarlo vacío si no usas query
+})">Ver</button>
           </td>
         </tr>
       </tbody>
@@ -137,6 +174,8 @@ export default {
       editando: false,
       ordenIdEditando: null,
       mostrarModal: false,
+      mostrarHistorial: false,
+      ordenHistorialSeleccionada: null,
     };
   },
   async mounted() {
@@ -166,16 +205,32 @@ export default {
     },
     async guardarOrden() {
       try {
+        const ordenData = {
+          clienteId: this.nuevaOrden.clienteId,
+          vehiculoId: this.nuevaOrden.vehiculoId,
+          empleadoId: this.nuevaOrden.empleadoId,
+          fechaIngreso: this.nuevaOrden.fechaIngreso,
+          fechaEstimadaEntrega: this.nuevaOrden.fechaEstimadaEntrega,
+          estado: this.nuevaOrden.estado,
+          diagnostico: this.nuevaOrden.diagnostico,
+          trabajosRealizados: this.nuevaOrden.trabajosRealizados,
+          comentariosAdicionales: this.nuevaOrden.comentariosAdicionales,
+          fotos: this.nuevaOrden.fotos,
+          comentarioEstado: '', // <-- agrega esto
+        };
+
+        console.log('Enviando:', ordenData); // <-- Agrega esto
+
         if (this.editando) {
           const res = await axios.put(
             `http://localhost:3000/api/ordenes-servicio/${this.ordenIdEditando}`,
-            this.nuevaOrden
+            ordenData
           );
           const index = this.ordenes.findIndex((orden) => orden._id === this.ordenIdEditando);
           this.ordenes[index] = res.data;
           this.cancelarEdicion();
         } else {
-          const res = await axios.post('http://localhost:3000/api/ordenes-servicio', this.nuevaOrden);
+          const res = await axios.post('http://localhost:3000/api/ordenes-servicio', ordenData);
           this.ordenes.push(res.data);
         }
         this.nuevaOrden = {
@@ -201,6 +256,7 @@ export default {
         ...orden,
         fechaIngreso: orden.fechaIngreso ? orden.fechaIngreso.split('T')[0] : '',
         fechaEstimadaEntrega: orden.fechaEstimadaEntrega ? orden.fechaEstimadaEntrega.split('T')[0] : '',
+        estado: orden.estado || 'Recepción', // Asegura que siempre tenga un valor
       };
       this.editando = true;
       this.ordenIdEditando = orden._id;
@@ -273,6 +329,14 @@ export default {
     getFotoUrl(foto) {
       if (foto.startsWith('http')) return foto;
       return `http://localhost:3000${foto}`;
+    },
+    verHistorial(orden) {
+      this.ordenHistorialSeleccionada = orden;
+      this.mostrarHistorial = true;
+    },
+    cerrarHistorial() {
+      this.ordenHistorialSeleccionada = null;
+      this.mostrarHistorial = false;
     },
   },
 };

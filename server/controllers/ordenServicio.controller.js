@@ -2,7 +2,14 @@ const OrdenServicio = require('../models/OrdenServicio');
 
 exports.crearOrdenServicio = async (req, res) => {
   try {
-    const nuevaOrden = new OrdenServicio(req.body);
+    const nuevaOrden = new OrdenServicio({
+      ...req.body,
+      historialEstados: [{
+        estado: req.body.estado,
+        fecha: new Date(),
+        comentario: 'Creación de la orden'
+      }]
+    });
     const resultado = await nuevaOrden.save();
     res.status(201).json(resultado);
   } catch (err) {
@@ -27,7 +34,25 @@ exports.obtenerOrdenServicioPorId = async (req, res) => {
 
 exports.actualizarOrdenServicio = async (req, res) => {
   try {
-    const orden = await OrdenServicio.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const orden = await OrdenServicio.findById(req.params.id);
+    if (!orden) return res.status(404).json({ error: 'Orden no encontrada' });
+
+    // Si el estado cambió, agrega al historial
+    if (req.body.estado && req.body.estado !== orden.estado) {
+      orden.historialEstados.push({
+        estado: req.body.estado,
+        fecha: new Date(),
+        comentario: req.body.comentarioEstado || '',
+        montoPresupuesto: req.body.montoPresupuesto // solo si aplica
+      });
+      // Si es presupuesto, actualiza el campo principal
+      if (req.body.estado === 'Aprobación de presupuesto' && req.body.montoPresupuesto) {
+        orden.montoPresupuesto = req.body.montoPresupuesto;
+      }
+    }
+
+    Object.assign(orden, req.body);
+    await orden.save();
     res.json(orden);
   } catch (err) {
     res.status(400).json({ error: err.message });

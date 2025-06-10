@@ -6,6 +6,7 @@ import Clientes from '@/pages/Clientes.vue';
 import Vehiculos from '@/pages/Vehiculos.vue';
 import Inventario from '@/pages/Inventario.vue';
 import OrdenesServicio from '@/pages/OrdenesServicio.vue';
+import OrdenServicioDetalle from '@/components/OrdenServicioDetalle.vue';
 
 const routes = [
   { path: '/', component: LoginForm },
@@ -18,6 +19,7 @@ const routes = [
       { path: 'vehiculos', component: Vehiculos },
       { path: 'inventario', component: Inventario },
       { path: 'ordenes-servicio', component: OrdenesServicio },
+      { path: 'ordenes-servicio/:id', component: OrdenServicioDetalle, props: true },
     ],
   },
 
