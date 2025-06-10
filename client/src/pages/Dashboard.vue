@@ -1,85 +1,109 @@
 <template>
-  <div class="dashboard-container">
-    <header class="dashboard-header">
-      <img src="@/assets/logo.png" alt="RuedApp Logo" class="logo" />
-      <h1>RUEDAAPP</h1>
-    </header>
-    <nav class="dashboard-nav">
-      <router-link to="/dashboard/clientes" class="nav-link">Clientes</router-link>
-      <router-link to="/dashboard/inventario" class="nav-link">Inventario</router-link>
-      <router-link to="/dashboard/ordenes-servicio" class="nav-link">Órdenes de Servicio</router-link>
-      <router-link to="/dashboard/vehiculos" class="nav-link">Vehículos</router-link>
-    </nav>
-    <main class="dashboard-content">
-      <router-view />
-    </main>
+  <div>
+    <div class="dashboard-welcome">
+      <h2>¡Bienvenido a RuedApp!</h2>
+      <p>Selecciona una sección del menú para comenzar a gestionar tu taller.</p>
+    </div>
+    <div class="dashboard-kpis">
+      <div class="kpi-card">
+        <h3>{{ totalClientes }}</h3>
+        <p>Clientes</p>
+      </div>
+      <div class="kpi-card">
+        <h3>{{ totalVehiculos }}</h3>
+        <p>Vehículos</p>
+      </div>
+      <div class="kpi-card">
+        <h3>{{ totalOrdenes }}</h3>
+        <p>Órdenes activas</p>
+      </div>
+      <div class="kpi-card">
+        <h3>{{ totalInventario }}</h3>
+        <p>Items en Inventario</p>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
+import axios from 'axios';
 export default {
-  name: 'DashboardPage', // Cumple con la regla multi-word
-};
+  name: 'DashboardPage',
+  data() {
+    return {
+      totalClientes: 0,
+      totalVehiculos: 0,
+      totalOrdenes: 0,
+      totalInventario: 0,
+    };
+  },
+  async mounted() {
+    const [clientes, vehiculos, ordenes, inventario] = await Promise.all([
+      axios.get('http://localhost:3000/api/clientes'),
+      axios.get('http://localhost:3000/api/vehiculos'),
+      axios.get('http://localhost:3000/api/ordenes-servicio'),
+      axios.get('http://localhost:3000/api/inventario'),
+    ]);
+    this.totalClientes = clientes.data.length;
+    this.totalVehiculos = vehiculos.data.length;
+    this.totalOrdenes = ordenes.data.length;
+    this.totalInventario = inventario.data.length;
+  }
+}
 </script>
 
 <style scoped>
-/* Fondo con degradado */
-.dashboard-container {
+.dashboard-welcome {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.dashboard-welcome h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-welcome p {
+  font-size: 1.2rem;
+  color: #e0e0e0;
+}
+
+.dashboard-kpis {
   display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #1e3c72, #2a5298); /* Azul metálico */
-  color: white;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.kpi-card {
+  background: rgba(255,255,255,0.13);
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  min-width: 180px;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(30,60,114,0.08);
   font-family: 'Poppins', sans-serif;
 }
 
-/* Encabezado del dashboard */
-.dashboard-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  background: rgba(0, 0, 0, 0.2); /* Fondo semitransparente */
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+.kpi-card h3 {
+  font-size: 2.2rem;
+  margin: 0 0 0.5rem 0;
+  color: #42b983;
 }
 
-.dashboard-header .logo {
-  width: 50px;
-  height: auto;
-  margin-right: 1rem;
-}
-
-.dashboard-header h1 {
-  font-size: 1.8rem;
+.kpi-card p {
   margin: 0;
+  font-size: 1.1rem;
+  color: #e0e0e0;
 }
 
-/* Navegación del dashboard */
-.dashboard-nav {
-  display: flex;
-  justify-content: center;
-  gap: 1.5rem;
-  padding: 1rem 0;
-  background: rgba(255, 255, 255, 0.1); /* Fondo semitransparente */
-}
-
-.nav-link {
-  color: white;
-  text-decoration: none;
-  font-size: 1.2rem;
-  padding: 0.5rem 1rem;
-  border-radius: 5px;
-  transition: background 0.3s, color 0.3s;
-}
-
-.nav-link:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: #f5f5f5;
-}
-
-/* Contenido principal */
-.dashboard-content {
-  flex: 1;
-  padding: 2rem;
+@media (max-width: 700px) {
+  .dashboard-kpis {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+  }
 }
 </style>

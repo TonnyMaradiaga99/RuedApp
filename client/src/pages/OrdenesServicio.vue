@@ -2,56 +2,65 @@
   <div class="ordenes-servicio-container">
     <h1>Gestión de Órdenes de Servicio</h1>
 
-    <!-- Formulario para agregar o editar órdenes -->
-    <form class="ordenes-servicio-form" @submit.prevent="guardarOrden">
-      <h2>{{ editando ? 'Editar Orden' : 'Agregar Orden' }}</h2>
-      <label for="cliente">Cliente</label>
-      <select id="cliente" v-model="nuevaOrden.clienteId" @change="filtrarVehiculos" required>
-        <option disabled value="">Seleccione un Cliente</option>
-        <option v-for="cliente in clientes" :key="cliente._id" :value="cliente._id">
-          {{ cliente.nombre }} {{ cliente.apellido }}
-        </option>
-      </select>
+    <button class="agregar-btn" @click="abrirModalNuevaOrden">Agregar Orden</button>
 
-      <label for="vehiculo">Vehículo</label>
-      <select id="vehiculo" v-model="nuevaOrden.vehiculoId" required>
-        <option disabled value="">Seleccione un Vehículo</option>
-        <option v-for="vehiculo in vehiculosFiltrados" :key="vehiculo._id" :value="vehiculo._id">
-          {{ vehiculo.marca }} {{ vehiculo.modelo }} - {{ vehiculo.placa }}
-        </option>
-      </select>
+    <BaseModal v-if="mostrarModal" @close="cerrarModal">
+      <form class="ordenes-servicio-form" @submit.prevent="guardarOrden">
+        <h2>{{ editando ? 'Editar Orden' : 'Agregar Orden' }}</h2>
+        <label for="cliente">Cliente</label>
+        <select id="cliente" v-model="nuevaOrden.clienteId" @change="filtrarVehiculos" required>
+          <option disabled value="">Seleccione un Cliente</option>
+          <option v-for="cliente in clientes" :key="cliente._id" :value="cliente._id">
+            {{ cliente.nombre }} {{ cliente.apellido }}
+          </option>
+        </select>
 
-      <label for="empleado">Empleado</label>
-      <select id="empleado" v-model="nuevaOrden.empleadoId" required>
-        <option disabled value="">Seleccione un Empleado</option>
-        <option v-for="empleado in empleados" :key="empleado._id" :value="empleado._id">
-          {{ empleado.nombre }} {{ empleado.apellido }}
-        </option>
-      </select>
+        <label for="vehiculo">Vehículo</label>
+        <select id="vehiculo" v-model="nuevaOrden.vehiculoId" required>
+          <option disabled value="">Seleccione un Vehículo</option>
+          <option v-for="vehiculo in vehiculosFiltrados" :key="vehiculo._id" :value="vehiculo._id">
+            {{ vehiculo.marca }} {{ vehiculo.modelo }} - {{ vehiculo.placa }}
+          </option>
+        </select>
 
-      <label for="fechaIngreso">Fecha de Ingreso</label>
-      <input id="fechaIngreso" v-model="nuevaOrden.fechaIngreso" type="date" required />
+        <label for="empleado">Empleado</label>
+        <select id="empleado" v-model="nuevaOrden.empleadoId" required>
+          <option disabled value="">Seleccione un Empleado</option>
+          <option v-for="empleado in empleados" :key="empleado._id" :value="empleado._id">
+            {{ empleado.nombre }} {{ empleado.apellido }}
+          </option>
+        </select>
 
-      <label for="fechaEstimadaEntrega">Fecha Estimada de Entrega</label>
-      <input id="fechaEstimadaEntrega" v-model="nuevaOrden.fechaEstimadaEntrega" type="date" />
+        <label for="fechaIngreso">Fecha de Ingreso</label>
+        <input id="fechaIngreso" v-model="nuevaOrden.fechaIngreso" type="date" required />
 
-      <label for="estado">Estado</label>
-      <input id="estado" v-model="nuevaOrden.estado" type="text" placeholder="Estado" />
+        <label for="fechaEstimadaEntrega">Fecha Estimada de Entrega</label>
+        <input id="fechaEstimadaEntrega" v-model="nuevaOrden.fechaEstimadaEntrega" type="date" />
 
-      <label for="diagnostico">Diagnóstico</label>
-      <textarea id="diagnostico" v-model="nuevaOrden.diagnostico" placeholder="Diagnóstico"></textarea>
+        <label for="estado">Estado</label>
+        <input id="estado" v-model="nuevaOrden.estado" type="text" placeholder="Estado" />
 
-      <label for="trabajosRealizados">Trabajos Realizados</label>
-      <textarea id="trabajosRealizados" v-model="nuevaOrden.trabajosRealizados" placeholder="Trabajos Realizados"></textarea>
+        <label for="diagnostico">Diagnóstico</label>
+        <textarea id="diagnostico" v-model="nuevaOrden.diagnostico" placeholder="Diagnóstico"></textarea>
 
-      <label for="comentariosAdicionales">Comentarios Adicionales</label>
-      <textarea id="comentariosAdicionales" v-model="nuevaOrden.comentariosAdicionales" placeholder="Comentarios Adicionales"></textarea>
+        <label for="trabajosRealizados">Trabajos Realizados</label>
+        <textarea id="trabajosRealizados" v-model="nuevaOrden.trabajosRealizados" placeholder="Trabajos Realizados"></textarea>
 
-      <button type="submit">{{ editando ? 'Actualizar' : 'Guardar' }}</button>
-      <button v-if="editando" type="button" @click="cancelarEdicion">Cancelar</button>
-    </form>
+        <label for="comentariosAdicionales">Comentarios Adicionales</label>
+        <textarea id="comentariosAdicionales" v-model="nuevaOrden.comentariosAdicionales" placeholder="Comentarios Adicionales"></textarea>
 
-    <!-- Tabla para listar órdenes -->
+        <label for="fotos">Adjuntar Fotos</label>
+        <input id="fotos" type="file" multiple @change="onFileChange" />
+
+        <div v-if="nuevaOrden.fotos && nuevaOrden.fotos.length">
+          <img v-for="foto in nuevaOrden.fotos" :src="foto" :key="foto" style="max-width: 80px; margin: 5px;" />
+        </div>
+
+        <button type="submit">{{ editando ? 'Actualizar' : 'Guardar' }}</button>
+        <button v-if="editando" type="button" @click="cancelarEdicion">Cancelar</button>
+      </form>
+    </BaseModal>
+
     <table class="ordenes-servicio-table">
       <thead>
         <tr>
@@ -64,6 +73,7 @@
           <th>Diagnóstico</th>
           <th>Trabajos Realizados</th>
           <th>Comentarios Adicionales</th>
+          <th>Fotos</th> <!-- Nueva columna -->
           <th>Acciones</th>
         </tr>
       </thead>
@@ -79,6 +89,16 @@
           <td>{{ orden.trabajosRealizados }}</td>
           <td>{{ orden.comentariosAdicionales }}</td>
           <td>
+            <div v-if="orden.fotos && orden.fotos.length">
+              <img
+                v-for="foto in orden.fotos"
+                :src="getFotoUrl(foto)"
+                :key="foto"
+                style="max-width: 50px; max-height: 50px; margin: 2px; border-radius: 4px;"
+              />
+            </div>
+          </td>
+          <td>
             <button @click="editarOrden(orden)">Editar</button>
             <button @click="confirmarEliminarOrden(orden._id)">Eliminar</button>
           </td>
@@ -90,9 +110,11 @@
 
 <script>
 import axios from 'axios';
+import BaseModal from '@/components/BaseModal.vue';
 
 export default {
   name: 'OrdenesServicio',
+  components: { BaseModal },
   data() {
     return {
       ordenes: [],
@@ -110,9 +132,11 @@ export default {
         diagnostico: '',
         trabajosRealizados: '',
         comentariosAdicionales: '',
+        fotos: [],
       },
       editando: false,
       ordenIdEditando: null,
+      mostrarModal: false,
     };
   },
   async mounted() {
@@ -164,8 +188,10 @@ export default {
           diagnostico: '',
           trabajosRealizados: '',
           comentariosAdicionales: '',
+          fotos: [],
         };
         this.vehiculosFiltrados = [];
+        this.mostrarModal = false;
       } catch (err) {
         console.error('Error al guardar orden:', err);
       }
@@ -179,6 +205,7 @@ export default {
       this.editando = true;
       this.ordenIdEditando = orden._id;
       this.filtrarVehiculos();
+      this.mostrarModal = true;
     },
     cancelarEdicion() {
       this.nuevaOrden = {
@@ -191,10 +218,19 @@ export default {
         diagnostico: '',
         trabajosRealizados: '',
         comentariosAdicionales: '',
+        fotos: [],
       };
       this.editando = false;
       this.ordenIdEditando = null;
       this.vehiculosFiltrados = [];
+      this.mostrarModal = false;
+    },
+    cerrarModal() {
+      this.cancelarEdicion();
+    },
+    abrirModalNuevaOrden() {
+      this.cancelarEdicion();
+      this.mostrarModal = true;
     },
     async confirmarEliminarOrden(id) {
       const confirmar = window.confirm('¿Estás seguro de que deseas eliminar esta orden?');
@@ -222,12 +258,42 @@ export default {
       const empleado = this.empleados.find((e) => e._id === empleadoId);
       return empleado ? `${empleado.nombre} ${empleado.apellido}` : 'Desconocido';
     },
+    async onFileChange(e) {
+      const files = e.target.files;
+      for (let i = 0; i < files.length; i++) {
+        const formData = new FormData();
+        formData.append('foto', files[i]);
+        const res = await axios.post('http://localhost:3000/api/orden-foto', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (!this.nuevaOrden.fotos) this.nuevaOrden.fotos = [];
+        this.nuevaOrden.fotos.push(res.data.url);
+      }
+    },
+    getFotoUrl(foto) {
+      if (foto.startsWith('http')) return foto;
+      return `http://localhost:3000${foto}`;
+    },
   },
 };
 </script>
 
 <style scoped>
-/* Estilos similares a Inventario.vue */
+.agregar-btn {
+  background: #42b983;
+  color: #fff;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  transition: background 0.2s;
+}
+.agregar-btn:hover {
+  background: #369870;
+}
+
 .ordenes-servicio-container {
   padding: 2rem;
   color: white;

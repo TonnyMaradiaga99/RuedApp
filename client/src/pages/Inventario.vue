@@ -2,19 +2,21 @@
   <div class="inventario-container">
     <h1>Gestión de Inventario</h1>
 
-    <!-- Formulario para agregar o editar elementos -->
-    <form class="inventario-form" @submit.prevent="guardarItem">
-      <h2>{{ editando ? 'Editar Item' : 'Agregar Item' }}</h2>
-      <input v-model="nuevoItem.nombre" type="text" placeholder="Nombre del Item" required />
-      <textarea v-model="nuevoItem.descripcion" placeholder="Descripción"></textarea>
-      <input v-model.number="nuevoItem.stock" type="number" placeholder="Stock" :class="{ empty: nuevoItem.stock === null }" min="0" required />
-      <input v-model.number="nuevoItem.precio" type="number" placeholder="Precio" :class="{ empty: nuevoItem.precio === null }" min="0" step="0.01" required />
-      <input v-model="nuevoItem.proveedor" type="text" placeholder="Proveedor" />
-      <button type="submit">{{ editando ? 'Actualizar' : 'Guardar' }}</button>
-      <button v-if="editando" type="button" @click="cancelarEdicion">Cancelar</button>
-    </form>
+    <button class="agregar-btn" @click="mostrarModal = true">Agregar Item</button>
 
-    <!-- Tabla para listar elementos del inventario -->
+    <BaseModal v-if="mostrarModal" @close="cerrarModal">
+      <form class="inventario-form" @submit.prevent="guardarItem">
+        <h2>{{ editando ? 'Editar Item' : 'Agregar Item' }}</h2>
+        <input v-model="nuevoItem.nombre" type="text" placeholder="Nombre del Item" required />
+        <textarea v-model="nuevoItem.descripcion" placeholder="Descripción"></textarea>
+        <input v-model.number="nuevoItem.stock" type="number" placeholder="Stock" min="0" required />
+        <input v-model.number="nuevoItem.precio" type="number" placeholder="Precio" min="0" step="0.01" required />
+        <input v-model="nuevoItem.proveedor" type="text" placeholder="Proveedor" />
+        <button type="submit">{{ editando ? 'Actualizar' : 'Guardar' }}</button>
+        <button v-if="editando" type="button" @click="cancelarEdicion">Cancelar</button>
+      </form>
+    </BaseModal>
+
     <table class="inventario-table">
       <thead>
         <tr>
@@ -45,25 +47,27 @@
 
 <script>
 import axios from 'axios';
+import BaseModal from '@/components/BaseModal.vue';
 
 export default {
   name: 'InventarioPage',
+  components: { BaseModal },
   data() {
     return {
       inventario: [],
       nuevoItem: {
         nombre: '',
         descripcion: '',
-        stock: null, // Cambiado a null para que el campo quede vacío
-        precio: null, // Cambiado a null para que el campo quede vacío
+        stock: null,
+        precio: null,
         proveedor: '',
       },
-      editando: false, // Bandera para saber si estamos editando
-      itemIdEditando: null, // ID del item que se está editando
+      editando: false,
+      itemIdEditando: null,
+      mostrarModal: false,
     };
   },
   async mounted() {
-    // Cargar inventario al montar el componente
     this.cargarInventario();
   },
   methods: {
@@ -78,40 +82,39 @@ export default {
     async guardarItem() {
       try {
         if (this.editando) {
-          // Actualizar item existente
           const res = await axios.put(
             `http://localhost:3000/api/inventario/${this.itemIdEditando}`,
             this.nuevoItem
           );
-          // Actualizar la lista de inventario
           const index = this.inventario.findIndex((item) => item._id === this.itemIdEditando);
           this.inventario[index] = res.data;
           this.cancelarEdicion();
         } else {
-          // Crear nuevo item
           const res = await axios.post('http://localhost:3000/api/inventario', this.nuevoItem);
-          this.inventario.push(res.data); // Agregar el nuevo item a la lista
+          this.inventario.push(res.data);
         }
-        // Limpiar el formulario
         this.nuevoItem = { nombre: '', descripcion: '', stock: null, precio: null, proveedor: '' };
+        this.mostrarModal = false;
       } catch (err) {
         console.error('Error al guardar item:', err);
       }
     },
     editarItem(item) {
-      // Llenar el formulario con los datos del item para editar
       this.nuevoItem = { ...item };
       this.editando = true;
       this.itemIdEditando = item._id;
+      this.mostrarModal = true;
     },
     cancelarEdicion() {
-      // Limpiar el formulario y cancelar la edición
       this.nuevoItem = { nombre: '', descripcion: '', stock: null, precio: null, proveedor: '' };
       this.editando = false;
       this.itemIdEditando = null;
+      this.mostrarModal = false;
+    },
+    cerrarModal() {
+      this.cancelarEdicion();
     },
     async confirmarEliminarItem(id) {
-      // Mostrar confirmación antes de eliminar
       const confirmar = window.confirm('¿Estás seguro de que deseas eliminar este item?');
       if (confirmar) {
         this.eliminarItem(id);
@@ -120,7 +123,7 @@ export default {
     async eliminarItem(id) {
       try {
         await axios.delete(`http://localhost:3000/api/inventario/${id}`);
-        this.inventario = this.inventario.filter((item) => item._id !== id); // Eliminar item de la lista
+        this.inventario = this.inventario.filter((item) => item._id !== id);
       } catch (err) {
         console.error('Error al eliminar item:', err);
       }
@@ -133,7 +136,6 @@ export default {
 </script>
 
 <style scoped>
-/* Los estilos permanecen iguales */
 .inventario-container {
   padding: 2rem;
   color: white;
@@ -220,5 +222,20 @@ export default {
 
 .inventario-table button:hover {
   background: #163a5f;
+}
+
+.agregar-btn {
+  background: #42b983;
+  color: #fff;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  transition: background 0.2s;
+}
+.agregar-btn:hover {
+  background: #369870;
 }
 </style>

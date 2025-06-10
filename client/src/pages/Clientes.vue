@@ -2,19 +2,21 @@
   <div class="clientes-container">
     <h1>Gestión de Clientes</h1>
 
-    <!-- Formulario para agregar o editar clientes -->
-    <form class="clientes-form" @submit.prevent="guardarCliente">
-      <h2>{{ editando ? 'Editar Cliente' : 'Agregar Cliente' }}</h2>
-      <input v-model="nuevoCliente.nombre" type="text" placeholder="Nombre" required />
-      <input v-model="nuevoCliente.apellido" type="text" placeholder="Apellido" required />
-      <input v-model="nuevoCliente.email" type="email" placeholder="Correo Electrónico" required />
-      <input v-model="nuevoCliente.telefono" type="text" placeholder="Teléfono" />
-      <input v-model="nuevoCliente.direccion" type="text" placeholder="Dirección" />
-      <button type="submit">{{ editando ? 'Actualizar' : 'Guardar' }}</button>
-      <button v-if="editando" type="button" @click="cancelarEdicion">Cancelar</button>
-    </form>
+    <button class="agregar-btn" @click="mostrarModal = true">Agregar Cliente</button>
 
-    <!-- Tabla para listar clientes -->
+    <BaseModal v-if="mostrarModal" @close="cerrarModal">
+      <form class="clientes-form" @submit.prevent="guardarCliente">
+        <h2>{{ editando ? 'Editar Cliente' : 'Agregar Cliente' }}</h2>
+        <input v-model="nuevoCliente.nombre" type="text" placeholder="Nombre" required />
+        <input v-model="nuevoCliente.apellido" type="text" placeholder="Apellido" required />
+        <input v-model="nuevoCliente.email" type="email" placeholder="Correo Electrónico" required />
+        <input v-model="nuevoCliente.telefono" type="text" placeholder="Teléfono" />
+        <input v-model="nuevoCliente.direccion" type="text" placeholder="Dirección" />
+        <button type="submit">{{ editando ? 'Actualizar' : 'Guardar' }}</button>
+        <button v-if="editando" type="button" @click="cancelarEdicion">Cancelar</button>
+      </form>
+    </BaseModal>
+
     <table class="clientes-table">
       <thead>
         <tr>
@@ -45,9 +47,11 @@
 
 <script>
 import axios from 'axios';
+import BaseModal from '@/components/BaseModal.vue';
 
 export default {
   name: 'ClientesPage',
+  components: { BaseModal },
   data() {
     return {
       clientes: [],
@@ -58,12 +62,12 @@ export default {
         telefono: '',
         direccion: '',
       },
-      editando: false, // Bandera para saber si estamos editando
-      clienteIdEditando: null, // ID del cliente que se está editando
+      editando: false,
+      clienteIdEditando: null,
+      mostrarModal: false,
     };
   },
   async mounted() {
-    // Cargar clientes al montar el componente
     this.cargarClientes();
   },
   methods: {
@@ -78,40 +82,39 @@ export default {
     async guardarCliente() {
       try {
         if (this.editando) {
-          // Actualizar cliente existente
           const res = await axios.put(
             `http://localhost:3000/api/clientes/${this.clienteIdEditando}`,
             this.nuevoCliente
           );
-          // Actualizar la lista de clientes
           const index = this.clientes.findIndex((c) => c._id === this.clienteIdEditando);
           this.clientes[index] = res.data;
           this.cancelarEdicion();
         } else {
-          // Crear cliente nuevo
           const res = await axios.post('http://localhost:3000/api/clientes', this.nuevoCliente);
-          this.clientes.push(res.data); // Agregar el nuevo cliente a la lista
+          this.clientes.push(res.data);
         }
-        // Limpiar el formulario
         this.nuevoCliente = { nombre: '', apellido: '', email: '', telefono: '', direccion: '' };
+        this.mostrarModal = false;
       } catch (err) {
         console.error('Error al guardar cliente:', err);
       }
     },
     editarCliente(cliente) {
-      // Llenar el formulario con los datos del cliente para editar
       this.nuevoCliente = { ...cliente };
       this.editando = true;
       this.clienteIdEditando = cliente._id;
+      this.mostrarModal = true;
     },
     cancelarEdicion() {
-      // Limpiar el formulario y cancelar la edición
       this.nuevoCliente = { nombre: '', apellido: '', email: '', telefono: '', direccion: '' };
       this.editando = false;
       this.clienteIdEditando = null;
+      this.mostrarModal = false;
+    },
+    cerrarModal() {
+      this.cancelarEdicion();
     },
     async confirmarEliminarCliente(id) {
-      // Mostrar confirmación antes de eliminar
       const confirmar = window.confirm('¿Estás seguro de que deseas eliminar este cliente?');
       if (confirmar) {
         this.eliminarCliente(id);
@@ -120,7 +123,7 @@ export default {
     async eliminarCliente(id) {
       try {
         await axios.delete(`http://localhost:3000/api/clientes/${id}`);
-        this.clientes = this.clientes.filter((cliente) => cliente._id !== id); // Eliminar cliente de la lista
+        this.clientes = this.clientes.filter((cliente) => cliente._id !== id);
       } catch (err) {
         console.error('Error al eliminar cliente:', err);
       }
@@ -136,7 +139,21 @@ export default {
   font-family: 'Poppins', sans-serif;
 }
 
-/* Estilo del formulario */
+.agregar-btn {
+  background: #42b983;
+  color: #fff;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  transition: background 0.2s;
+}
+.agregar-btn:hover {
+  background: #369870;
+}
+
 .clientes-form {
   background: rgba(255, 255, 255, 0.1);
   padding: 1.5rem;
@@ -174,7 +191,6 @@ export default {
   background: #163a5f;
 }
 
-/* Estilo de la tabla */
 .clientes-table {
   width: 100%;
   border-collapse: collapse;

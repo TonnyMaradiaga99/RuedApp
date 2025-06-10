@@ -9,7 +9,8 @@ const ordenServicioSchema = new mongoose.Schema({
   estado: String,
   diagnostico: String,
   trabajosRealizados: String,
-  comentariosAdicionales: String
+  comentariosAdicionales: String,
+  fotos: [String], // <-- Array de URLs de imágenes
 });
 
 module.exports = mongoose.model('OrdenServicio', ordenServicioSchema);

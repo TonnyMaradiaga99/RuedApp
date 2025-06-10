@@ -2,27 +2,29 @@
   <div class="vehiculos-container">
     <h1>Gestión de Vehículos</h1>
 
-    <!-- Formulario para agregar o editar vehículos -->
-    <form class="vehiculos-form" @submit.prevent="guardarVehiculo">
-      <h2>{{ editando ? 'Editar Vehículo' : 'Agregar Vehículo' }}</h2>
-      <select v-model="nuevoVehiculo.clienteId" required>
-        <option disabled value="">Seleccione un Cliente</option>
-        <option v-for="cliente in clientes" :key="cliente._id" :value="cliente._id">
-          {{ cliente.nombre }} {{ cliente.apellido }}
-        </option>
-      </select>
-      <input v-model="nuevoVehiculo.marca" type="text" placeholder="Marca" required />
-      <input v-model="nuevoVehiculo.modelo" type="text" placeholder="Modelo" required />
-      <input v-model="nuevoVehiculo.año" type="number" placeholder="Año" min="1900" max="2100" />
-      <input v-model="nuevoVehiculo.placa" type="text" placeholder="Placa" />
-      <input v-model="nuevoVehiculo.color" type="text" placeholder="Color" />
-      <input v-model="nuevoVehiculo.kilometraje" type="number" placeholder="Kilometraje" min="0" />
-      <input v-model="nuevoVehiculo.VIN" type="text" placeholder="VIN" />
-      <button type="submit">{{ editando ? 'Actualizar' : 'Guardar' }}</button>
-      <button v-if="editando" type="button" @click="cancelarEdicion">Cancelar</button>
-    </form>
+    <button class="agregar-btn" @click="abrirModalNuevoVehiculo">Agregar Vehículo</button>
 
-    <!-- Tabla para listar vehículos -->
+    <BaseModal v-if="mostrarModal" @close="cerrarModal">
+      <form class="vehiculos-form" @submit.prevent="guardarVehiculo">
+        <h2>{{ editando ? 'Editar Vehículo' : 'Agregar Vehículo' }}</h2>
+        <select v-model="nuevoVehiculo.clienteId" required>
+          <option disabled value="">Seleccione un Cliente</option>
+          <option v-for="cliente in clientes" :key="cliente._id" :value="cliente._id">
+            {{ cliente.nombre }} {{ cliente.apellido }}
+          </option>
+        </select>
+        <input v-model="nuevoVehiculo.marca" type="text" placeholder="Marca" required />
+        <input v-model="nuevoVehiculo.modelo" type="text" placeholder="Modelo" required />
+        <input v-model="nuevoVehiculo.año" type="number" placeholder="Año" min="1900" max="2100" />
+        <input v-model="nuevoVehiculo.placa" type="text" placeholder="Placa" />
+        <input v-model="nuevoVehiculo.color" type="text" placeholder="Color" />
+        <input v-model="nuevoVehiculo.kilometraje" type="number" placeholder="Kilometraje" min="0" />
+        <input v-model="nuevoVehiculo.VIN" type="text" placeholder="VIN" />
+        <button type="submit">{{ editando ? 'Actualizar' : 'Guardar' }}</button>
+        <button v-if="editando" type="button" @click="cancelarEdicion">Cancelar</button>
+      </form>
+    </BaseModal>
+
     <table class="vehiculos-table">
       <thead>
         <tr>
@@ -53,9 +55,11 @@
 
 <script>
 import axios from 'axios';
+import BaseModal from '@/components/BaseModal.vue';
 
 export default {
   name: 'VehiculosPage',
+  components: { BaseModal },
   data() {
     return {
       vehiculos: [],
@@ -72,6 +76,7 @@ export default {
       },
       editando: false,
       vehiculoIdEditando: null,
+      mostrarModal: false,
     };
   },
   async mounted() {
@@ -114,6 +119,7 @@ export default {
           kilometraje: null,
           VIN: '',
         };
+        this.mostrarModal = false;
       } catch (err) {
         console.error('Error al guardar vehículo:', err);
       }
@@ -122,6 +128,7 @@ export default {
       this.nuevoVehiculo = { ...vehiculo };
       this.editando = true;
       this.vehiculoIdEditando = vehiculo._id;
+      this.mostrarModal = true;
     },
     cancelarEdicion() {
       this.nuevoVehiculo = {
@@ -136,6 +143,10 @@ export default {
       };
       this.editando = false;
       this.vehiculoIdEditando = null;
+      this.mostrarModal = false;
+    },
+    cerrarModal() {
+      this.cancelarEdicion();
     },
     async confirmarEliminarVehiculo(id) {
       const confirmar = window.confirm('¿Estás seguro de que deseas eliminar este vehículo?');
@@ -155,11 +166,30 @@ export default {
       const cliente = this.clientes.find((c) => c._id === clienteId);
       return cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Desconocido';
     },
+    abrirModalNuevoVehiculo() {
+      this.cancelarEdicion();
+      this.mostrarModal = true;
+    },
   },
 };
 </script>
 
 <style scoped>
+.agregar-btn {
+  background: #42b983;
+  color: #fff;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  transition: background 0.2s;
+}
+.agregar-btn:hover {
+  background: #369870;
+}
+
 .vehiculos-container {
   padding: 2rem;
   color: white;
