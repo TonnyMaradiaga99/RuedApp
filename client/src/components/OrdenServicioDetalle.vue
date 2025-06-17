@@ -45,6 +45,36 @@
       </ul>
     </div>
     <button @click="guardarCambios">Guardar Cambios</button>
+
+    <BaseModal v-if="mostrarDetalle" @close="cerrarDetalle">
+      <div class="detalle-orden">
+        <h2>Detalle de Orden</h2>
+        <p><strong>Cliente:</strong> {{ obtenerNombreCliente(orden.clienteId) }}</p>
+        <p><strong>Vehículo:</strong> {{ obtenerDescripcionVehiculo(orden.vehiculoId) }}</p>
+        <p><strong>Empleado:</strong> {{ obtenerNombreEmpleado(orden.empleadoId) }}</p>
+        <p><strong>Estado:</strong> <span :class="['estado', orden.estado.toLowerCase()]">{{ orden.estado }}</span></p>
+        <div class="fotos">
+          <img v-for="foto in orden.fotos" :src="getFotoUrl(foto)" :key="foto" class="foto-grande" />
+        </div>
+        <div>
+          <h3>Historial de Estados</h3>
+          <!-- Aquí el timeline del historial -->
+          <div class="historial-timeline">
+            <div v-for="item in orden.historial" :key="item._id" class="historial-item">
+              <span :class="['estado', item.estado.toLowerCase()]">{{ item.estado }}</span>
+              <span class="fecha">{{ new Date(item.fecha).toLocaleString() }}</span>
+              <span class="usuario">{{ item.usuario || 'Sistema' }}</span>
+              <span class="comentario">{{ item.comentario }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="puedeActualizarEstado(orden.estado)">
+          <button @click="actualizarEstado('Entregado')">Marcar como Entregado</button>
+          <button @click="actualizarEstado('Cancelado')">Cancelar</button>
+          <!-- Otros estados según lógica -->
+        </div>
+      </div>
+    </BaseModal>
   </div>
 </template>
 
@@ -69,7 +99,8 @@ export default {
         'Cancelado'
       ],
       montoPresupuesto: null,
-      comentarioPresupuesto: ''
+      comentarioPresupuesto: '',
+      mostrarDetalle: false
     };
   },
   async created() {
@@ -150,6 +181,25 @@ export default {
     getFotoUrl(foto) {
       if (foto.startsWith('http')) return foto;
       return `http://localhost:3000${foto}`;
+    },
+    cerrarDetalle() {
+      this.mostrarDetalle = false;
+    },
+    puedeActualizarEstado(estado) {
+      const estadosEditables = ['En reparación', 'Listo para entrega'];
+      return estadosEditables.includes(estado);
+    },
+    async actualizarEstado(nuevoEstado) {
+      const comentario = prompt('Comentario para el cambio de estado:', '');
+      if (comentario !== null) {
+        await axios.put(`http://localhost:3000/api/ordenes-servicio/${this.orden._id}`, {
+          estado: nuevoEstado,
+          comentarioEstado: comentario
+        });
+        await this.recargarOrden();
+        this.mostrarDetalle = false;
+        alert('Estado actualizado a ' + nuevoEstado);
+      }
     }
   }
 };
@@ -213,5 +263,74 @@ export default {
   border: 1px solid #1e3c72;
   font-size: 1rem;
   margin-top: 0.3rem;
+}
+.detalle-orden {
+  max-width: 800px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+.fotos {
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.foto-grande {
+  max-width: 100%;
+  border-radius: 5px;
+}
+.historial-timeline {
+  border-left: 2px solid #1e3c72;
+  padding-left: 1.5rem;
+  margin: 1rem 0;
+}
+.historial-item {
+  margin-bottom: 1rem;
+}
+.historial-item .estado {
+  font-weight: bold;
+}
+.historial-item .fecha {
+  font-size: 0.9rem;
+  color: #666;
+}
+.historial-item .usuario {
+  font-style: italic;
+  color: #333;
+}
+.historial-item .comentario {
+  margin-top: 0.2rem;
+}
+.estado {
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.9rem;
+  color: #fff;
+}
+.estado.recepcion {
+  background: #f59e0b;
+}
+.estado.diagnostico {
+  background: #3b82f6;
+}
+.estado.aprobacion {
+  background: #10b981;
+}
+.estado.en-reparacion {
+  background: #3f83f8;
+}
+.estado.listo {
+  background: #4ade80;
+}
+.estado.entregado {
+  background: #34d399;
+}
+.estado.finalizado {
+  background: #6ee7b7;
+}
+.estado.cancelado {
+  background: #f87171;
 }
 </style>

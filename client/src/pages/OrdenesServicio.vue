@@ -4,6 +4,14 @@
 
     <button class="agregar-btn" @click="abrirModalNuevaOrden">Agregar Orden</button>
 
+    <div class="filtros-ordenes">
+      <input v-model="busqueda" placeholder="Buscar por cliente, vehículo o estado..." />
+      <select v-model="filtroEstado">
+        <option value="">Todos los estados</option>
+        <option v-for="estado in estadosUnicos" :key="estado" :value="estado">{{ estado }}</option>
+      </select>
+    </div>
+
     <BaseModal v-if="mostrarModal" @close="cerrarModal">
       <form class="ordenes-servicio-form" @submit.prevent="guardarOrden">
         <h2>{{ editando ? 'Editar Orden' : 'Agregar Orden' }}</h2>
@@ -25,8 +33,12 @@
 
         <label for="empleado">Empleado</label>
         <select id="empleado" v-model="nuevaOrden.empleadoId" required>
-          <option disabled value="">Seleccione un Empleado</option>
-          <option v-for="empleado in empleados" :key="empleado._id" :value="empleado._id">
+          <option disabled value="">Seleccione un Mecánico</option>
+          <option
+            v-for="empleado in empleadosMecanicos"
+            :key="empleado._id"
+            :value="empleado._id"
+          >
             {{ empleado.nombre }} {{ empleado.apellido }}
           </option>
         </select>
@@ -83,13 +95,14 @@
 
     <BaseModal v-if="mostrarHistorial" @close="cerrarHistorial">
       <h2>Historial de Estados</h2>
-      <ul v-if="ordenHistorialSeleccionada && ordenHistorialSeleccionada.historialEstados">
-        <li v-for="(h, i) in ordenHistorialSeleccionada.historialEstados" :key="i">
-          <strong>{{ h.estado }}</strong>
-          <span> - {{ new Date(h.fecha).toLocaleString() }}</span>
-          <span v-if="h.comentario"> ({{ h.comentario }})</span>
-        </li>
-      </ul>
+      <div v-if="ordenHistorialSeleccionada && ordenHistorialSeleccionada.historialEstados" class="historial-timeline">
+        <div v-for="item in ordenHistorialSeleccionada.historialEstados" :key="item._id" class="historial-item">
+          <span :class="['estado', item.estado.toLowerCase()]">{{ item.estado }}</span>
+          <span class="fecha">{{ new Date(item.fecha).toLocaleString() }}</span>
+          <span class="usuario">{{ item.usuario || 'Sistema' }}</span>
+          <span class="comentario">{{ item.comentario }}</span>
+        </div>
+      </div>
       <div v-else>No hay historial disponible.</div>
     </BaseModal>
 
@@ -110,7 +123,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="orden in ordenes" :key="orden._id">
+        <tr v-for="orden in ordenesFiltradas" :key="orden._id">
           <td>{{ obtenerNombreCliente(orden.clienteId) }}</td>
           <td>{{ obtenerDescripcionVehiculo(orden.vehiculoId) }}</td>
           <td>{{ obtenerNombreEmpleado(orden.empleadoId) }}</td>
@@ -176,27 +189,49 @@ export default {
       mostrarModal: false,
       mostrarHistorial: false,
       ordenHistorialSeleccionada: null,
+      busqueda: '',
+      filtroEstado: '',
     };
+  },
+  computed: {
+    empleadosMecanicos() {
+      return this.empleados.filter(e => e.rol === 'mecanico');
+    },
+    ordenesFiltradas() {
+      return this.ordenes.filter(orden => {
+        // Filtro por estado
+        const coincideEstado = this.filtroEstado ? orden.estado === this.filtroEstado : true;
+        // Búsqueda por cliente, vehículo o estado
+        const texto = this.busqueda.toLowerCase();
+        const clienteNombre = this.obtenerNombreCliente(orden.clienteId).toLowerCase();
+        const vehiculoDesc = this.obtenerDescripcionVehiculo(orden.vehiculoId).toLowerCase();
+        const coincideBusqueda =
+          clienteNombre.includes(texto) ||
+          vehiculoDesc.includes(texto) ||
+          orden.estado?.toLowerCase().includes(texto);
+        return coincideEstado && (!this.busqueda || coincideBusqueda);
+      });
+    },
+    estadosUnicos() {
+      // Devuelve los estados únicos de las órdenes
+      return [...new Set(this.ordenes.map(o => o.estado))];
+    }
   },
   async mounted() {
     await this.cargarDatos();
   },
   methods: {
     async cargarDatos() {
-      try {
-        const [ordenesRes, clientesRes, vehiculosRes, empleadosRes] = await Promise.all([
-          axios.get('http://localhost:3000/api/ordenes-servicio'),
-          axios.get('http://localhost:3000/api/clientes'),
-          axios.get('http://localhost:3000/api/vehiculos'),
-          axios.get('http://localhost:3000/api/empleados'),
-        ]);
-        this.ordenes = ordenesRes.data;
-        this.clientes = clientesRes.data;
-        this.vehiculos = vehiculosRes.data;
-        this.empleados = empleadosRes.data;
-      } catch (err) {
-        console.error('Error al cargar datos:', err);
-      }
+      const [ordenesRes, clientesRes, vehiculosRes, empleadosRes] = await Promise.all([
+        axios.get('http://localhost:3000/api/ordenes-servicio'),
+        axios.get('http://localhost:3000/api/clientes'),
+        axios.get('http://localhost:3000/api/vehiculos'),
+        axios.get('http://localhost:3000/api/empleados'),
+      ]);
+      this.ordenes = ordenesRes.data;
+      this.clientes = clientesRes.data;
+      this.vehiculos = vehiculosRes.data;
+      this.empleados = empleadosRes.data;
     },
     filtrarVehiculos() {
       this.vehiculosFiltrados = this.vehiculos.filter(
@@ -303,12 +338,12 @@ export default {
       }
     },
     obtenerNombreCliente(clienteId) {
-      const cliente = this.clientes.find((c) => c._id === clienteId);
+      const cliente = this.clientes.find(c => c._id === clienteId);
       return cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Desconocido';
     },
     obtenerDescripcionVehiculo(vehiculoId) {
-      const vehiculo = this.vehiculos.find((v) => v._id === vehiculoId);
-      return vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : 'Desconocido';
+      const vehiculo = this.vehiculos.find(v => v._id === vehiculoId);
+      return vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.placa})` : 'Desconocido';
     },
     obtenerNombreEmpleado(empleadoId) {
       const empleado = this.empleados.find((e) => e._id === empleadoId);
@@ -403,6 +438,19 @@ export default {
   background: #163a5f;
 }
 
+.filtros-ordenes {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filtros-ordenes input,
+.filtros-ordenes select {
+  padding: 0.5rem;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
 .ordenes-servicio-table {
   width: 100%;
   border-collapse: collapse;
@@ -439,5 +487,27 @@ export default {
 
 .ordenes-servicio-table button:hover {
   background: #163a5f;
+}
+
+.historial-timeline {
+  margin: 1rem 0;
+  border-left: 3px solid #42b983;
+  padding-left: 1rem;
+}
+.historial-item {
+  margin-bottom: 1rem;
+  position: relative;
+}
+.estado {
+  font-weight: bold;
+  margin-right: 1rem;
+}
+.estado.entregado { color: #42b983; }
+.estado.cancelado { color: #e74c3c; }
+.estado.en-reparacion { color: #f1c40f; }
+.fecha, .usuario, .comentario {
+  display: inline-block;
+  margin-right: 1rem;
+  color: #ccc;
 }
 </style>
