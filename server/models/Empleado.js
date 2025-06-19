@@ -9,7 +9,9 @@ const empleadoSchema = new mongoose.Schema({
   telefono: String,
   email: { type: String, unique: true, required: true },
   password: { type: String, required: true },
-  tallerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Taller' }
+  tallerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Taller' },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date
 });
 
 empleadoSchema.pre('save', async function(next) {

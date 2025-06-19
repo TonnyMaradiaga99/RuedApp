@@ -1,4 +1,5 @@
 const Empleado = require('../models/Empleado');
+const bcrypt = require('bcrypt');
 
 exports.crearEmpleado = async (req, res) => {
   try {
@@ -27,7 +28,17 @@ exports.obtenerEmpleadoPorId = async (req, res) => {
 
 exports.actualizarEmpleado = async (req, res) => {
   try {
-    const empleado = await Empleado.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updateData = { ...req.body };
+
+    // Si se está cambiando la contraseña, hashearla antes de guardar
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    } else {
+      // Si no se envía contraseña, no actualizar ese campo
+      delete updateData.password;
+    }
+
+    const empleado = await Empleado.findByIdAndUpdate(req.params.id, updateData, { new: true });
     res.json(empleado);
   } catch (err) {
     res.status(400).json({ error: err.message });

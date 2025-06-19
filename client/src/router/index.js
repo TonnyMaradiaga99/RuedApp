@@ -9,6 +9,7 @@ import OrdenesServicio from '@/pages/OrdenesServicio.vue';
 import OrdenServicioDetalle from '@/components/OrdenServicioDetalle.vue';
 import Empleados from '@/pages/Empleados.vue';
 import Talleres from '@/pages/Talleres.vue';
+import RecuperarPassword from '@/components/RecuperarPassword.vue';
 
 const routes = [
   { path: '/', component: LoginForm },
@@ -26,7 +27,7 @@ const routes = [
       { path: 'talleres', component: Talleres },
     ],
   },
-
+  { path: '/recuperar-password', component: RecuperarPassword },
 ];
 
 const router = createRouter({

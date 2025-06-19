@@ -39,10 +39,12 @@ export default {
     };
   },
   async mounted() {
+    const token = localStorage.getItem('token');
+    const config = { headers: { Authorization: `Bearer ${token}` } };
     const [clientes, vehiculos, ordenes, inventario] = await Promise.all([
       axios.get('http://localhost:3000/api/clientes'),
       axios.get('http://localhost:3000/api/vehiculos'),
-      axios.get('http://localhost:3000/api/ordenes-servicio'),
+      axios.get('http://localhost:3000/api/ordenes-servicio', config),
       axios.get('http://localhost:3000/api/inventario'),
     ]);
     this.totalClientes = clientes.data.length;

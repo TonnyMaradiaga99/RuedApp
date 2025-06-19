@@ -31,61 +31,37 @@
           </option>
         </select>
 
-        <label for="empleado">Empleado</label>
-        <select id="empleado" v-model="nuevaOrden.empleadoId" required>
+        <label for="empleado" v-if="userRol === 'admin' || userRol === 'propietario'">Mecánico</label>
+        <select
+          id="empleado"
+          v-model="nuevaOrden.empleadoId"
+          required
+          v-if="userRol === 'admin' || userRol === 'propietario'"
+        >
           <option disabled value="">Seleccione un Mecánico</option>
-          <option
-            v-for="empleado in empleadosMecanicos"
-            :key="empleado._id"
-            :value="empleado._id"
-          >
+          <option v-for="empleado in empleadosMecanicos" :key="empleado._id" :value="empleado._id">
             {{ empleado.nombre }} {{ empleado.apellido }}
           </option>
         </select>
-
-        <label for="fechaIngreso">Fecha de Ingreso</label>
-        <input id="fechaIngreso" v-model="nuevaOrden.fechaIngreso" type="date" required />
-
-        <label for="fechaEstimadaEntrega">Fecha Estimada de Entrega</label>
-        <input id="fechaEstimadaEntrega" v-model="nuevaOrden.fechaEstimadaEntrega" type="date" />
-
-        <label for="estado">Estado</label>
-        <select id="estado" v-model="nuevaOrden.estado" required>
-          <option disabled value="">Seleccione un Estado</option>
-          <option value="Recepción">Recepción</option>
-          <option value="Diagnóstico">Diagnóstico</option>
-          <option value="Aprobación de presupuesto">Aprobación de presupuesto</option>
-          <option value="En reparación">En reparación</option>
-          <option value="Listo para entrega">Listo para entrega</option>
-          <option value="Entregado">Entregado</option>
-          <option value="Finalizado">Finalizado</option>
-          <option value="Cancelado">Cancelado</option>
-        </select>
-
-        <label for="diagnostico">Diagnóstico</label>
-        <textarea id="diagnostico" v-model="nuevaOrden.diagnostico" placeholder="Diagnóstico"></textarea>
-
-        <label for="trabajosRealizados">Trabajos Realizados</label>
-        <textarea id="trabajosRealizados" v-model="nuevaOrden.trabajosRealizados" placeholder="Trabajos Realizados"></textarea>
+        <!-- Si es mecánico, muestra solo su nombre -->
+        <div v-else>
+          <label>Mecánico</label>
+          <input type="text" :value="nombreUsuario" disabled />
+        </div>
 
         <label for="comentariosAdicionales">Comentarios Adicionales</label>
         <textarea id="comentariosAdicionales" v-model="nuevaOrden.comentariosAdicionales" placeholder="Comentarios Adicionales"></textarea>
 
-        <label for="fotos">Adjuntar Fotos</label>
-        <input id="fotos" type="file" multiple @change="onFileChange" />
-
-        <div v-if="nuevaOrden.fotos && nuevaOrden.fotos.length">
+        <label for="fotos" v-if="!editando">Adjuntar Fotos</label>
+        <input
+          id="fotos"
+          type="file"
+          multiple
+          @change="onFileChange"
+          v-if="!editando"
+        />
+        <div v-if="!editando && nuevaOrden.fotos && nuevaOrden.fotos.length">
           <img v-for="foto in nuevaOrden.fotos" :src="foto" :key="foto" style="max-width: 80px; margin: 5px;" />
-        </div>
-
-        <div v-if="nuevaOrden.historialEstados && nuevaOrden.historialEstados.length">
-          <h3>Historial de Estados</h3>
-          <ul>
-            <li v-for="(h, i) in nuevaOrden.historialEstados" :key="i">
-              <strong>{{ h.estado }}</strong> - {{ new Date(h.fecha).toLocaleString() }}
-              <span v-if="h.comentario">({{ h.comentario }})</span>
-            </li>
-          </ul>
         </div>
 
         <button type="submit">{{ editando ? 'Actualizar' : 'Guardar' }}</button>
@@ -109,48 +85,38 @@
     <table class="ordenes-servicio-table">
       <thead>
         <tr>
+          <th>Orden de Servicio</th>
           <th>Cliente</th>
           <th>Vehículo</th>
           <th>Empleado</th>
           <th>Fecha Ingreso</th>
-          <th>Fecha Estimada de Entrega</th>
           <th>Estado</th>
-          <th>Diagnóstico</th>
-          <th>Trabajos Realizados</th>
-          <th>Comentarios Adicionales</th>
-          <th>Fotos</th> <!-- Nueva columna -->
+          <th>Fotos</th>
           <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="orden in ordenesFiltradas" :key="orden._id">
+          <td>{{ orden._id.slice(-8) }}</td>
           <td>{{ obtenerNombreCliente(orden.clienteId) }}</td>
           <td>{{ obtenerDescripcionVehiculo(orden.vehiculoId) }}</td>
           <td>{{ obtenerNombreEmpleado(orden.empleadoId) }}</td>
           <td>{{ orden.fechaIngreso }}</td>
-          <td>{{ orden.fechaEstimadaEntrega }}</td>
           <td>{{ orden.estado }}</td>
-          <td>{{ orden.diagnostico }}</td>
-          <td>{{ orden.trabajosRealizados }}</td>
-          <td>{{ orden.comentariosAdicionales }}</td>
           <td>
-            <div v-if="orden.fotos && orden.fotos.length">
+            <div v-if="orden.historialEstados && orden.historialEstados.length">
               <img
-                v-for="foto in orden.fotos"
-                :src="getFotoUrl(foto)"
-                :key="foto"
+                v-for="item in orden.historialEstados.filter(e => e.foto)"
+                :src="getFotoUrl(item.foto)"
+                :key="item.fecha"
                 style="max-width: 50px; max-height: 50px; margin: 2px; border-radius: 4px;"
               />
             </div>
           </td>
           <td>
             <button @click="verHistorial(orden)">Ver historial</button>
-            <button @click="editarOrden(orden)">Editar</button>
             <button @click="confirmarEliminarOrden(orden._id)">Eliminar</button>
-            <button @click="$router.push({ 
-  path: `/dashboard/ordenes-servicio/${orden._id}`, 
-  query: { } // puedes dejarlo vacío si no usas query
-})">Ver</button>
+            <button @click="$router.push({ path: `/dashboard/ordenes-servicio/${orden._id}` })">Ver</button>
           </td>
         </tr>
       </tbody>
@@ -176,11 +142,6 @@ export default {
         clienteId: '',
         vehiculoId: '',
         empleadoId: '',
-        fechaIngreso: '',
-        fechaEstimadaEntrega: '',
-        estado: '',
-        diagnostico: '',
-        trabajosRealizados: '',
         comentariosAdicionales: '',
         fotos: [],
       },
@@ -194,14 +155,22 @@ export default {
     };
   },
   computed: {
+    userRol() {
+      return localStorage.getItem('rol');
+    },
+    userId() {
+      return localStorage.getItem('userId');
+    },
+    nombreUsuario() {
+      const empleado = this.empleados.find(e => e._id === this.userId);
+      return empleado ? `${empleado.nombre} ${empleado.apellido}` : '';
+    },
     empleadosMecanicos() {
       return this.empleados.filter(e => e.rol === 'mecanico');
     },
     ordenesFiltradas() {
       return this.ordenes.filter(orden => {
-        // Filtro por estado
         const coincideEstado = this.filtroEstado ? orden.estado === this.filtroEstado : true;
-        // Búsqueda por cliente, vehículo o estado
         const texto = this.busqueda.toLowerCase();
         const clienteNombre = this.obtenerNombreCliente(orden.clienteId).toLowerCase();
         const vehiculoDesc = this.obtenerDescripcionVehiculo(orden.vehiculoId).toLowerCase();
@@ -222,13 +191,16 @@ export default {
   },
   methods: {
     async cargarDatos() {
+      const token = localStorage.getItem('token');
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
       const [ordenesRes, clientesRes, vehiculosRes, empleadosRes] = await Promise.all([
-        axios.get('http://localhost:3000/api/ordenes-servicio'),
+        axios.get('http://localhost:3000/api/ordenes-servicio', config),
         axios.get('http://localhost:3000/api/clientes'),
         axios.get('http://localhost:3000/api/vehiculos'),
         axios.get('http://localhost:3000/api/empleados'),
       ]);
-      this.ordenes = ordenesRes.data;
+      this.ordenes = ordenesRes.data.sort((a, b) => new Date(b.fechaIngreso) - new Date(a.fechaIngreso));
       this.clientes = clientesRes.data;
       this.vehiculos = vehiculosRes.data;
       this.empleados = empleadosRes.data;
@@ -240,58 +212,54 @@ export default {
     },
     async guardarOrden() {
       try {
+        const empleadoId = this.userRol === 'mecanico'
+          ? this.userId
+          : this.nuevaOrden.empleadoId;
         const ordenData = {
           clienteId: this.nuevaOrden.clienteId,
           vehiculoId: this.nuevaOrden.vehiculoId,
-          empleadoId: this.nuevaOrden.empleadoId,
-          fechaIngreso: this.nuevaOrden.fechaIngreso,
-          fechaEstimadaEntrega: this.nuevaOrden.fechaEstimadaEntrega,
-          estado: this.nuevaOrden.estado,
-          diagnostico: this.nuevaOrden.diagnostico,
-          trabajosRealizados: this.nuevaOrden.trabajosRealizados,
+          empleadoId, 
           comentariosAdicionales: this.nuevaOrden.comentariosAdicionales,
-          fotos: this.nuevaOrden.fotos,
-          comentarioEstado: '', // <-- agrega esto
+          ...(this.editando ? {} : { fotos: this.nuevaOrden.fotos }),
         };
 
-        console.log('Enviando:', ordenData); // <-- Agrega esto
+        const token = localStorage.getItem('token');
+        const config = { headers: { Authorization: `Bearer ${token}` } };
 
-        if (this.editando) {
-          const res = await axios.put(
-            `http://localhost:3000/api/ordenes-servicio/${this.ordenIdEditando}`,
-            ordenData
-          );
-          const index = this.ordenes.findIndex((orden) => orden._id === this.ordenIdEditando);
-          this.ordenes[index] = res.data;
-          this.cancelarEdicion();
+        if (!this.editando) {
+          ordenData.estado = 'Recepción';
+          await axios.post('http://localhost:3000/api/ordenes-servicio', ordenData, config);
         } else {
-          const res = await axios.post('http://localhost:3000/api/ordenes-servicio', ordenData);
-          this.ordenes.push(res.data);
+          await axios.put(
+            `http://localhost:3000/api/ordenes-servicio/${this.ordenIdEditando}`,
+            ordenData,
+            config
+          );
         }
+        await this.cargarDatos();
         this.nuevaOrden = {
           clienteId: '',
           vehiculoId: '',
           empleadoId: '',
-          fechaIngreso: '',
-          fechaEstimadaEntrega: '',
-          estado: '',
-          diagnostico: '',
-          trabajosRealizados: '',
           comentariosAdicionales: '',
           fotos: [],
         };
         this.vehiculosFiltrados = [];
         this.mostrarModal = false;
+        this.editando = false;
+        this.ordenIdEditando = null;
       } catch (err) {
+        alert('Error al guardar orden: ' + (err.response?.data?.error || err.message));
         console.error('Error al guardar orden:', err);
       }
     },
     editarOrden(orden) {
       this.nuevaOrden = {
-        ...orden,
-        fechaIngreso: orden.fechaIngreso ? orden.fechaIngreso.split('T')[0] : '',
-        fechaEstimadaEntrega: orden.fechaEstimadaEntrega ? orden.fechaEstimadaEntrega.split('T')[0] : '',
-        estado: orden.estado || 'Recepción', // Asegura que siempre tenga un valor
+        clienteId: orden.clienteId,
+        vehiculoId: orden.vehiculoId,
+        empleadoId: orden.empleadoId,
+        comentariosAdicionales: orden.comentariosAdicionales || '',
+        fotos: [],
       };
       this.editando = true;
       this.ordenIdEditando = orden._id;
@@ -303,11 +271,6 @@ export default {
         clienteId: '',
         vehiculoId: '',
         empleadoId: '',
-        fechaIngreso: '',
-        fechaEstimadaEntrega: '',
-        estado: '',
-        diagnostico: '',
-        trabajosRealizados: '',
         comentariosAdicionales: '',
         fotos: [],
       };
@@ -321,6 +284,12 @@ export default {
     },
     abrirModalNuevaOrden() {
       this.cancelarEdicion();
+      // Si es mecánico, asigna su propio ID
+      if (this.userRol === 'mecanico') {
+        this.nuevaOrden.empleadoId = this.userId;
+      } else {
+        this.nuevaOrden.empleadoId = '';
+      }
       this.mostrarModal = true;
     },
     async confirmarEliminarOrden(id) {
@@ -331,7 +300,9 @@ export default {
     },
     async eliminarOrden(id) {
       try {
-        await axios.delete(`http://localhost:3000/api/ordenes-servicio/${id}`);
+        const token = localStorage.getItem('token');
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        await axios.delete(`http://localhost:3000/api/ordenes-servicio/${id}`, config);
         this.ordenes = this.ordenes.filter((orden) => orden._id !== id);
       } catch (err) {
         console.error('Error al eliminar orden:', err);

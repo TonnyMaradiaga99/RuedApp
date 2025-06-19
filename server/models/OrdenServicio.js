@@ -4,14 +4,15 @@ const historialEstadoSchema = new mongoose.Schema({
   estado: { type: String, required: true },
   fecha: { type: Date, default: Date.now },
   comentario: String,
-  montoPresupuesto: Number // Solo si aplica para ese estado
+  foto: String, // <-- asegúrate de tener esto
+  montoPresupuesto: Number
 });
 
 const ordenServicioSchema = new mongoose.Schema({
   clienteId: { type: mongoose.Schema.Types.ObjectId, ref: 'Cliente', required: true },
   vehiculoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehiculo', required: true },
   empleadoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empleado', required: true },
-  fechaIngreso: { type: Date, required: true },
+  fechaIngreso: { type: Date, required: true, default: Date.now },
   fechaEstimadaEntrega: Date,
   estado: {
     type: String,

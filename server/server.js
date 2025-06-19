@@ -11,6 +11,7 @@ const inventarioRoutes = require('./routes/inventario.routes');
 const authRoutes = require('./routes/auth.routes');
 const uploadRoutes = require('./routes/upload.routes');
 const tallerRoutes = require('./routes/taller.routes');
+const authMiddleware = require('./middleware/auth');
 
 app.use(cors());
 app.use(express.json());
@@ -23,7 +24,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/vehiculos', vehiculoRoutes);
 app.use('/api/empleados', empleadoRoutes);
-app.use('/api/ordenes-servicio', ordenServicioRoutes);
+app.use('/api/ordenes-servicio', authMiddleware, ordenServicioRoutes);
 app.use('/api/inventario', inventarioRoutes);
 app.use('/api', authRoutes);
 app.use('/api', uploadRoutes);

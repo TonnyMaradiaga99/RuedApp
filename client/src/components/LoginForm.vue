@@ -9,7 +9,10 @@
       <input v-model="email" type="email" placeholder="Correo" required />
       <input v-model="password" type="password" placeholder="Contraseña" required />
       <button type="submit">Entrar</button>
-      <p v-if="error" class="error">{{ error }}</p>
+      <router-link to="/recuperar-password" class="recuperar-link">
+        ¿Olvidaste tu contraseña?
+      </router-link>
+      <div v-if="error" class="error">{{ error }}</div>
     </form>
   </div>
 </template>
@@ -40,9 +43,10 @@ export default {
           email: this.email,
           password: this.password,
         });
-        // Guarda el token y el rol
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('rol', res.data.empleado.rol);
+        localStorage.setItem('userId', res.data.empleado.id);
+        localStorage.setItem('userName', res.data.empleado.nombre + ' ' + res.data.empleado.apellido);
 
         this.$router.push('/dashboard');
       } catch (err) {
@@ -147,6 +151,42 @@ html, body {
 .error {
   color: #d32f2f;
   text-align: center;
+  margin-top: 0.5rem;
+  font-weight: 600;
+  background: #ffeaea;
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.login-card {
+  max-width: 400px;
+  margin: 4rem auto;
+  background: #fff;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.recuperar-link {
+  display: block;
+  margin: 0.5rem auto 0 auto;
+  color: #1e3c72;
+  font-size: 1.08rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  background: #e3f0fa;
+  border-radius: 5px;
+  padding: 0.5rem 0;
+  width: 80%;
+  transition: background 0.2s, color 0.2s;
+  box-shadow: 0 2px 8px rgba(30,60,114,0.06);
+}
+.recuperar-link:hover {
+  background: #1e3c72;
+  color: #fff;
+  text-decoration: underline;
 }
 </style>
 

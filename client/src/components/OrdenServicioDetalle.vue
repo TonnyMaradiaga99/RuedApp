@@ -14,67 +14,53 @@
         <span>{{ obtenerDescripcionVehiculo(orden.vehiculoId) }}</span>
       </div>
       <div>
+        <label>Empleado:</label>
+        <span>{{ obtenerNombreEmpleado(orden.empleadoId) }}</span>
+      </div>
+      <div>
         <label>Estado actual:</label>
-        <select v-model="orden.estado" @change="onEstadoChange" class="select-estado">
-          <option v-for="op in estados" :key="op" :value="op">{{ op }}</option>
-        </select>
+        <span :class="['estado', orden.estado.toLowerCase().replace(/\s/g, '-')]">{{ orden.estado }}</span>
       </div>
     </div>
-    <div v-if="orden.estado === 'Aprobación de presupuesto'" class="presupuesto-campos">
-      <label>Monto estimado:</label>
-      <input v-model.number="montoPresupuesto" type="number" class="input-presupuesto" />
-      <label>Comentario:</label>
-      <textarea v-model="comentarioPresupuesto" class="input-presupuesto"></textarea>
-      <button @click="guardarPresupuesto">Guardar presupuesto</button>
-    </div>
-    <div>
-      <h3>Imágenes</h3>
-      <div v-if="orden.fotos && orden.fotos.length">
-        <img v-for="foto in orden.fotos" :src="getFotoUrl(foto)" :key="foto" style="max-width: 80px; margin: 5px;" />
-      </div>
-      <!-- Botón para subir nuevas imágenes -->
-    </div>
-    <div>
-      <h3>Bitácora / Historial</h3>
-      <ul>
-        <li v-for="evento in orden.historialEstados" :key="evento.fecha">
-          <strong>{{ evento.estado }}</strong> - {{ new Date(evento.fecha).toLocaleString() }}
-          <span v-if="evento.comentario">({{ evento.comentario }})</span>
-          <span v-if="evento.montoPresupuesto"> - L {{ evento.montoPresupuesto }}</span>
-        </li>
-      </ul>
-    </div>
-    <button @click="guardarCambios">Guardar Cambios</button>
 
-    <BaseModal v-if="mostrarDetalle" @close="cerrarDetalle">
-      <div class="detalle-orden">
-        <h2>Detalle de Orden</h2>
-        <p><strong>Cliente:</strong> {{ obtenerNombreCliente(orden.clienteId) }}</p>
-        <p><strong>Vehículo:</strong> {{ obtenerDescripcionVehiculo(orden.vehiculoId) }}</p>
-        <p><strong>Empleado:</strong> {{ obtenerNombreEmpleado(orden.empleadoId) }}</p>
-        <p><strong>Estado:</strong> <span :class="['estado', orden.estado.toLowerCase()]">{{ orden.estado }}</span></p>
-        <div class="fotos">
-          <img v-for="foto in orden.fotos" :src="getFotoUrl(foto)" :key="foto" class="foto-grande" />
+    <h3>Bitácora de Estados</h3>
+    <div class="historial-timeline">
+      <div v-for="item in orden.historialEstados" :key="item.fecha" class="historial-item">
+        <div class="historial-header">
+          <span
+            :class="['estado', item.estado.toLowerCase().replace(/\s/g, '-').normalize('NFD').replace(/[\u0300-\u036f]/g, '')]"
+          >
+            {{ item.estado }}
+          </span>
+          <span class="fecha">{{ new Date(item.fecha).toLocaleString() }}</span>
         </div>
-        <div>
-          <h3>Historial de Estados</h3>
-          <!-- Aquí el timeline del historial -->
-          <div class="historial-timeline">
-            <div v-for="item in orden.historial" :key="item._id" class="historial-item">
-              <span :class="['estado', item.estado.toLowerCase()]">{{ item.estado }}</span>
-              <span class="fecha">{{ new Date(item.fecha).toLocaleString() }}</span>
-              <span class="usuario">{{ item.usuario || 'Sistema' }}</span>
-              <span class="comentario">{{ item.comentario }}</span>
-            </div>
+        <div class="historial-body">
+          <span class="comentario"><strong>Comentario:</strong> {{ item.comentario }}</span>
+          <div v-if="item.foto" class="historial-foto">
+            <img :src="getFotoUrl(item.foto)" alt="Foto del estado" />
           </div>
         </div>
-        <div v-if="puedeActualizarEstado(orden.estado)">
-          <button @click="actualizarEstado('Entregado')">Marcar como Entregado</button>
-          <button @click="actualizarEstado('Cancelado')">Cancelar</button>
-          <!-- Otros estados según lógica -->
-        </div>
       </div>
-    </BaseModal>
+    </div>
+
+    <div v-if="puedeAvanzarEstado" class="avance-estado-form">
+      <h3>Avanzar al siguiente estado</h3>
+      <form @submit.prevent="avanzarEstado">
+        <label>Nuevo estado:</label>
+        <input type="text" :value="siguienteEstado" disabled />
+        <label>Comentario <span style="color:red">*</span>:</label>
+        <textarea v-model="comentarioEstado" required></textarea>
+        <label>Foto (opcional):</label>
+        <input type="file" @change="onFileChange" />
+        <button type="submit" :disabled="cargandoAvance">Guardar y avanzar</button>
+      </form>
+    </div>
+
+    <div v-if="orden.estado !== 'Finalizado' && orden.estado !== 'Cancelado'" class="cancelar-orden">
+      <button @click="cancelarOrden" style="background:#e74c3c; color:white; border:none; border-radius:5px; padding:0.7rem 1.5rem; margin-top:1rem;">
+        Cancelar orden
+      </button>
+    </div>
   </div>
 </template>
 
@@ -88,6 +74,10 @@ export default {
       orden: null,
       clientes: [],
       vehiculos: [],
+      empleados: [],
+      comentarioEstado: '',
+      fotoEstado: null,
+      cargandoAvance: false,
       estados: [
         'Recepción',
         'Diagnóstico',
@@ -97,115 +87,112 @@ export default {
         'Entregado',
         'Finalizado',
         'Cancelado'
-      ],
-      montoPresupuesto: null,
-      comentarioPresupuesto: '',
-      mostrarDetalle: false
+      ]
     };
   },
+  computed: {
+    puedeAvanzarEstado() {
+      const idx = this.estados.indexOf(this.orden?.estado);
+      return idx >= 0 && idx < this.estados.length - 2; // No permite avanzar desde Finalizado/Cancelado
+    },
+    siguienteEstado() {
+      const idx = this.estados.indexOf(this.orden?.estado);
+      return idx >= 0 && idx < this.estados.length - 1 ? this.estados[idx + 1] : '';
+    }
+  },
   async created() {
-    const [ordenRes, clientesRes, vehiculosRes] = await Promise.all([
-      axios.get(`http://localhost:3000/api/ordenes-servicio/${this.id}`),
-      axios.get('http://localhost:3000/api/clientes'),
-      axios.get('http://localhost:3000/api/vehiculos')
-    ]);
-    this.orden = ordenRes.data;
-    this.clientes = clientesRes.data;
-    this.vehiculos = vehiculosRes.data;
-    this.montoPresupuesto = this.orden.montoPresupuesto || null;
+    await this.cargarDatos();
   },
   methods: {
+    async cargarDatos() {
+      const [ordenRes, clientesRes, vehiculosRes, empleadosRes] = await Promise.all([
+        axios.get(`http://localhost:3000/api/ordenes-servicio/${this.id}`),
+        axios.get('http://localhost:3000/api/clientes'),
+        axios.get('http://localhost:3000/api/vehiculos'),
+        axios.get('http://localhost:3000/api/empleados'),
+      ]);
+      this.orden = ordenRes.data; 
+      this.clientes = clientesRes.data;
+      this.vehiculos = vehiculosRes.data;
+      this.empleados = empleadosRes.data;
+    },
     obtenerNombreCliente(clienteId) {
-      const cliente = this.clientes?.find(c => c._id === clienteId);
+      const cliente = this.clientes.find(c => c._id === clienteId);
       return cliente ? `${cliente.nombre} ${cliente.apellido}` : clienteId;
     },
     obtenerDescripcionVehiculo(vehiculoId) {
-      const vehiculo = this.vehiculos?.find(v => v._id === vehiculoId);
+      const vehiculo = this.vehiculos.find(v => v._id === vehiculoId);
       return vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} - ${vehiculo.placa}` : vehiculoId;
     },
-    onEstadoChange() {
-      // Si cambia a presupuesto, puedes mostrar el input
+    obtenerNombreEmpleado(empleadoId) {
+      const empleado = this.empleados.find(e => e._id === empleadoId);
+      return empleado ? `${empleado.nombre} ${empleado.apellido}` : empleadoId;
     },
-    async recargarOrden() {
-      const res = await axios.get(`http://localhost:3000/api/ordenes-servicio/${this.orden._id}`);
-      this.orden = res.data;
-      this.montoPresupuesto = this.orden.montoPresupuesto || null;
-    },
-    async guardarPresupuesto() {
-      await axios.put(`http://localhost:3000/api/ordenes-servicio/${this.orden._id}`, {
-        estado: 'Aprobación de presupuesto',
-        montoPresupuesto: this.montoPresupuesto,
-        comentarioEstado: this.comentarioPresupuesto
-      });
-      await this.recargarOrden();
-      this.comentarioPresupuesto = '';
-      alert('Presupuesto guardado');
-    },
-    async guardarCambios() {
-      try {
-        // Recarga la orden antes de guardar para obtener el estado actual del backend
-        const resActual = await axios.get(`http://localhost:3000/api/ordenes-servicio/${this.orden._id}`);
-        const estadoOriginal = resActual.data.estado;
-
-        // Prepara el payload
-        const payload = {
-          clienteId: this.orden.clienteId,
-          vehiculoId: this.orden.vehiculoId,
-          empleadoId: this.orden.empleadoId,
-          fechaIngreso: this.orden.fechaIngreso,
-          fechaEstimadaEntrega: this.orden.fechaEstimadaEntrega,
-          estado: this.orden.estado,
-          diagnostico: this.orden.diagnostico,
-          trabajosRealizados: this.orden.trabajosRealizados,
-          comentariosAdicionales: this.orden.comentariosAdicionales,
-          fotos: this.orden.fotos,
-        };
-
-        // Si el estado cambió, pide un comentario y agrégalo
-        if (this.orden.estado !== estadoOriginal) {
-          const comentario = prompt('Agrega un comentario para el cambio de estado:', '');
-          payload.comentarioEstado = comentario || '';
-        }
-
-        await axios.put(
-          `http://localhost:3000/api/ordenes-servicio/${this.orden._id}`,
-          payload
-        );
-        await this.recargarOrden();
-        alert('Cambios guardados correctamente');
-      } catch (err) {
-        alert('Error al guardar cambios');
-        console.error(err);
-      }
+    onFileChange(e) {
+      this.fotoEstado = e.target.files[0] || null;
     },
     getFotoUrl(foto) {
+      if (!foto) return '';
       if (foto.startsWith('http')) return foto;
       return `http://localhost:3000${foto}`;
     },
-    cerrarDetalle() {
-      this.mostrarDetalle = false;
-    },
-    puedeActualizarEstado(estado) {
-      const estadosEditables = ['En reparación', 'Listo para entrega'];
-      return estadosEditables.includes(estado);
-    },
-    async actualizarEstado(nuevoEstado) {
-      const comentario = prompt('Comentario para el cambio de estado:', '');
-      if (comentario !== null) {
-        await axios.put(`http://localhost:3000/api/ordenes-servicio/${this.orden._id}`, {
-          estado: nuevoEstado,
-          comentarioEstado: comentario
-        });
-        await this.recargarOrden();
-        this.mostrarDetalle = false;
-        alert('Estado actualizado a ' + nuevoEstado);
+    async avanzarEstado() {
+      if (!this.comentarioEstado.trim()) {
+        alert('El comentario es obligatorio.');
+        return;
       }
+      if (this.cargandoAvance) return;
+      this.cargandoAvance = true;
+      try {
+        let fotoUrl = null;
+        if (this.fotoEstado) {
+          const formData = new FormData();
+          formData.append('foto', this.fotoEstado);
+          const res = await axios.post('http://localhost:3000/api/orden-foto', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          fotoUrl = res.data.url;
+        }
+        await axios.put(`http://localhost:3000/api/ordenes-servicio/${this.orden._id}`, {
+          estado: this.siguienteEstado,
+          comentarioEstado: this.comentarioEstado,
+          fotoEstado: fotoUrl,
+          usuario: localStorage.getItem('userId')
+        });
+        this.comentarioEstado = '';
+        this.fotoEstado = null;
+        await this.cargarDatos(); // Refresca la orden y el historial
+      } catch (err) {
+        alert('Error al avanzar estado: ' + (err.response?.data?.error || err.message));
+      } finally {
+        this.cargandoAvance = false;
+      }
+    },
+    async cancelarOrden() {
+      const comentario = prompt('¿Por qué se cancela la orden? (motivo)');
+      if (!comentario) return;
+      await axios.put(`http://localhost:3000/api/ordenes-servicio/${this.orden._id}`, {
+        estado: 'Cancelado',
+        comentarioEstado: comentario,
+        fotoEstado: null
+      });
+      await this.cargarDatos();
+      alert('Orden cancelada');
     }
   }
 };
 </script>
 
 <style scoped>
+.detalle-orden-container {
+  max-width: 900px;
+  margin: 0 auto;
+  background: #fff;
+  color: #222;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
 .cerrar-detalle-btn {
   background: #1e3c72;
   color: #fff;
@@ -220,20 +207,6 @@ export default {
 .cerrar-detalle-btn:hover {
   background: #163a5f;
 }
-.detalle-orden-container button {
-  background: #1e3c72;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  padding: 0.5rem 1.2rem;
-  font-size: 1rem;
-  cursor: pointer;
-  margin-top: 1rem;
-  transition: background 0.2s;
-}
-.detalle-orden-container button:hover {
-  background: #163a5f;
-}
 .detalle-campos {
   display: flex;
   gap: 2rem;
@@ -244,93 +217,79 @@ export default {
   display: flex;
   flex-direction: column;
 }
-.select-estado {
-  padding: 0.5rem 1rem;
-  border-radius: 5px;
-  border: 1px solid #1e3c72;
+.estado {
+  padding: 0.2rem 0.7rem;
+  border-radius: 3px;
   font-size: 1rem;
-  margin-top: 0.3rem;
-}
-.presupuesto-campos {
-  display: flex;
-  align-items: flex-end;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-.input-presupuesto {
-  padding: 0.5rem 1rem;
-  border-radius: 5px;
-  border: 1px solid #1e3c72;
-  font-size: 1rem;
-  margin-top: 0.3rem;
-}
-.detalle-orden {
-  max-width: 800px;
-  margin: 0 auto;
-  background: #fff;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-.fotos {
-  display: flex;
-  gap: 1rem;
-  margin: 1.5rem 0;
-}
-.foto-grande {
-  max-width: 100%;
-  border-radius: 5px;
-}
-.historial-timeline {
-  border-left: 2px solid #1e3c72;
-  padding-left: 1.5rem;
-  margin: 1rem 0;
-}
-.historial-item {
-  margin-bottom: 1rem;
-}
-.historial-item .estado {
+  color: #fff;
   font-weight: bold;
 }
-.historial-item .fecha {
-  font-size: 0.9rem;
-  color: #666;
+.estado.recepcion { background: #f59e0b; }
+.estado.diagnostico { background: #3b82f6; }
+.estado.aprobacion { background: #10b981; }
+.estado.aprobacion-de-presupuesto { background: #059669; } /* verde oscuro */
+.estado.en-reparacion { background: #3f83f8; }
+.estado.listo-para-entrega { background: #4ade80; }
+.estado.entregado { background: #34d399; }
+.estado.finalizado { background: #6ee7b7; }
+.estado.cancelado { background: #f87171; }
+
+.historial-timeline {
+  border-left: 3px solid #42b983;
+  padding-left: 1.5rem;
+  margin: 1.5rem 0;
 }
-.historial-item .usuario {
-  font-style: italic;
-  color: #333;
+.historial-item {
+  margin-bottom: 2rem;
+  position: relative;
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
 }
-.historial-item .comentario {
-  margin-top: 0.2rem;
+.historial-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
 }
-.estado {
-  padding: 0.2rem 0.5rem;
-  border-radius: 3px;
-  font-size: 0.9rem;
+.historial-body {
+  margin-left: 1.5rem;
+}
+.historial-foto img {
+  max-width: 120px;
+  border-radius: 6px;
+  margin-top: 0.5rem;
+}
+.avance-estado-form {
+  margin-top: 2rem;
+  background: #e0e7ff;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+.avance-estado-form textarea {
+  width: 100%;
+  min-height: 60px;
+  margin-bottom: 1rem;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  padding: 0.5rem;
+}
+.avance-estado-form button {
+  background: #1e3c72;
   color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 0.7rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
 }
-.estado.recepcion {
-  background: #f59e0b;
+.avance-estado-form button:hover {
+  background: #163a5f;
 }
-.estado.diagnostico {
-  background: #3b82f6;
-}
-.estado.aprobacion {
-  background: #10b981;
-}
-.estado.en-reparacion {
-  background: #3f83f8;
-}
-.estado.listo {
-  background: #4ade80;
-}
-.estado.entregado {
-  background: #34d399;
-}
-.estado.finalizado {
-  background: #6ee7b7;
-}
-.estado.cancelado {
-  background: #f87171;
+.cancelar-orden {
+  margin-top: 2rem;
+  text-align: center;
 }
 </style>

@@ -1,6 +1,9 @@
 <template>
   <div class="dashboard-container">
     <header class="dashboard-header">
+      <div class="user-info">
+       {{ userName }}
+      </div>
       <img src="@/assets/logo.png" alt="RuedApp Logo" class="logo" />
       <router-link to="/dashboard" class="dashboard-title-link">
         <h1>RUEDAAPP</h1>
@@ -24,6 +27,11 @@
 
 <script>
 export default {
+  data() {
+    return {
+      userName: localStorage.getItem('userName') || ''
+    };
+  },
   computed: {
     userRol() {
       return localStorage.getItem('rol');
@@ -38,6 +46,7 @@ export default {
     logout() {
       localStorage.removeItem('token');
       localStorage.removeItem('rol');
+      localStorage.removeItem('userName');
       this.$router.push('/');
     }
   }
@@ -64,6 +73,18 @@ export default {
   position: relative;
 }
 
+.user-info {
+  position: absolute;
+  left: 32px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
 .dashboard-header .logo {
   width: 50px;
   height: auto;
@@ -84,6 +105,11 @@ export default {
 
 .dashboard-title-link:hover h1 {
   color: #42b983;
+}
+
+.user-name {
+  font-size: 1.2rem;
+  font-weight: 500;
 }
 
 .dashboard-nav {
